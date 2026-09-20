@@ -210,12 +210,12 @@ const DUCK_MODELS = [
   {label:'Redmi 15C', keys:['redmi 15c']},
   {label:'Redmi 15', keys:['redmi 15']},
   {label:'Redmi 17', keys:['redmi 17']},
-  {label:'Redmi Note 15', keys:['redmi note 15']},
-  {label:'Redmi Note 15 Pro', keys:['redmi note 15 pro']},
   {label:'Redmi Note 15 Pro+', keys:['redmi note 15 pro+','redmi note 15 pro plus']},
-  {label:'Redmi Note 17', keys:['redmi note 17']},
-  {label:'Redmi Note 17 Pro', keys:['redmi note pro']},
-  {label:'Redmi Note 17 Pro Max', keys:['redmi note 17 pro max','redmi note 17 promax']}
+  {label:'Redmi Note 15 Pro', keys:['redmi note 15 pro']},
+  {label:'Redmi Note 15', keys:['redmi note 15']},
+  {label:'Redmi Note 17 Pro Max', keys:['redmi note 17 pro max','redmi note 17 promax']},
+  {label:'Redmi Note 17 Pro', keys:['redmi note 17 pro']},
+  {label:'Redmi Note 17', keys:['redmi note 17']}
 ];
 function modelKey(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim()}
 function duckMatch(s,m){const x=modelKey(s);return m.keys.some(k=>x.includes(k));}
