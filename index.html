@@ -86,16 +86,12 @@ input,select{background:#0b1728;border:1px solid #29405e;color:#fff;padding:11px
 @media(max-width:420px){.duck-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.duck-item{padding:9px}.duck-qty{font-size:20px}}
 .duck-zero{color:#ff4d5f!important;font-weight:800;background:#2a1116}.duck-hit{color:#34d399!important;font-weight:800}.duck-total{font-weight:900}.duck-card .table{overflow-x:auto}.duck-card table{min-width:1050px}</style></head><body><div class="wrap">
 <h1>SMC Product Sales Command Center</h1><div class="sub">Daily Product Sales • Employee • Store • SKU • IMEI <span id="deviceMode"></span></div>
-<div class="top">
-<label class="upload">Import Latest Portal File<input id="file" type="file" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"></label>
-<button id="sample">Reset to Sample</button><button id="download">Download Employee Summary</button><button id="downloadDetail">Download Filtered Detail</button>
-</div>
-<div id="importStatus" class="note" style="margin-top:-4px;padding:10px 12px;border:1px solid #29405e;border-radius:10px;background:#0b1829"><strong>Auto Import:</strong> Ready. Import the daily SMC portal export once; the latest dataset will be remembered on this device.</div>
+<div class="top"><label class="upload">Upload Portal Excel<input id="file" type="file" accept=".xlsx,.xls,.csv"></label><button id="sample">Reset to Sample</button><button id="download">Download Employee Summary</button></div>
 <div class="kpis"><div class="card"><div class="lab">TOTAL VOLUME</div><div id="vol" class="big teal">0</div></div><div class="card"><div class="lab">TOTAL VALUE</div><div id="val" class="big blue">₹0</div></div><div class="card"><div class="lab">EMPLOYEES</div><div id="emps" class="big">0</div></div><div class="card"><div class="lab">STORES</div><div id="stores" class="big">0</div></div></div>
 <div class="controls"><input id="q" placeholder="Search employee / store / SKU / IMEI"><select id="ef"><option value="">All Employees</option></select><select id="sf"><option value="">All Stores</option></select><select id="skuf"><option value="">All SKUs</option></select></div>
 <div class="grid">
 <div class="card"><div class="title">Employee Performance</div><div class="table"><table><thead><tr><th>Employee</th><th>Volume</th><th>Value</th><th>Avg/Unit</th></tr></thead><tbody id="emp"></tbody></table></div></div>
-<div class="card"><div class="title">SKU Performance</div><div class="table"><table><thead><tr><th>SKU</th><th>Volume</th><th>Value</th></tr></thead><tbody id="sku"></tbody></table></div></div><div class="card"><div class="title">Store Performance</div><div class="table"><table><thead><tr><th>Store</th><th>Volume</th><th>Value</th><th>Avg/Unit</th></tr></thead><tbody id="storePerf"></tbody></table></div></div>
+<div class="card"><div class="title">SKU Performance</div><div class="table"><table><thead><tr><th>SKU</th><th>Volume</th><th>Value</th></tr></thead><tbody id="sku"></tbody></table></div></div>
 <div class="card"><div class="title">Top Employees by Value</div><div id="rank"></div></div>
 <div class="card"><div class="title">Employee → SKU Mix</div><div class="table"><table><thead><tr><th>Employee</th><th>SKU</th><th>Vol</th><th>Value</th></tr></thead><tbody id="mix"></tbody></table></div></div>
 <div class="card wide duck-card">
@@ -134,9 +130,7 @@ function render(){
  });
  let ea=Object.entries(em).sort((a,b)=>b[1].val-a[1].val), sa=Object.entries(sk).sort((a,b)=>b[1].v-a[1].v), ma=Object.values(mx).sort((a,b)=>b.val-a.val);
  $('emp').innerHTML=ea.map(([n,d])=>`<tr><td>${esc(n)}</td><td class=num>${d.v}</td><td class=num>${money(d.val)}</td><td class=num>${money(d.val/d.v)}</td></tr>`).join('');
- $('sku').innerHTML=sa.map(([n,d])=>`<tr><td>${esc(n)}</td><td class=num>${d.v}</td><td class=num>${money(d.val)}</td></tr>`).join(''); let st={}; filtered.forEach(r=>{st[r.store]??={v:0,val:0};st[r.store].v++;st[r.store].val+=Number(r.srp)||0;});
- let sta=Object.entries(st).sort((a,b)=>b[1].val-a[1].val);
- $('storePerf').innerHTML=sta.map(([n,d])=>`<tr><td>${esc(n)}</td><td class=num>${d.v}</td><td class=num>${money(d.val)}</td><td class=num>${money(d.val/d.v)}</td></tr>`).join('');
+ $('sku').innerHTML=sa.map(([n,d])=>`<tr><td>${esc(n)}</td><td class=num>${d.v}</td><td class=num>${money(d.val)}</td></tr>`).join('');
  $('rank').innerHTML=ea.slice(0,10).map(([n,d],i)=>`<div class=rank><span>${i+1}. ${esc(n)}</span><span class=pill>${d.v} units</span><b>${money(d.val)}</b></div>`).join('');
  $('mix').innerHTML=ma.map(d=>`<tr><td>${esc(d.e)}</td><td>${esc(d.s)}</td><td class=num>${d.v}</td><td class=num>${money(d.val)}</td></tr>`).join('');
  $('raw').innerHTML=filtered.slice(0,1000).map(r=>`<tr><td>${esc(r.employee)}</td><td>${esc(r.store)}</td><td>${esc(r.sku)}</td><td>${money(r.srp)}</td><td>${esc(r.imei)}</td></tr>`).join('');
@@ -145,57 +139,14 @@ function render(){
 }
 ['q','ef','sf','skuf'].forEach(id=>$(id).addEventListener(id==='q'?'input':'change',apply));
 $('sample').onclick=()=>{rows=SAMPLE.slice();rebuild()};
-function normalizeRows(a){
-  const pick=(r,names)=>{
-    for(const n of names){ if(Object.prototype.hasOwnProperty.call(r,n) && r[n]!=='' && r[n]!=null) return r[n]; }
-    const keys=Object.keys(r), wanted=names.map(x=>x.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const k=keys.find(x=>wanted.includes(String(x).toLowerCase().replace(/[^a-z0-9]/g,'')));
-    return k!==undefined?r[k]:'';
-  };
-  return a.map(r=>({
-    employee:String(pick(r,['Employee Name','EmployeeName','employee'])??'').trim(),
-    store:String(pick(r,['Store name','Store Name','store'])??'').trim(),
-    sku:String(pick(r,['Sku Name','SKU Name','sku name','sku'])??'').trim(),
-    srp:Number(pick(r,['srp','SRP','Srp']))||0,
-    imei:String(pick(r,['Imei','IMEI','imei','Number/IMEI Number'])??'').trim()
-  })).filter(r=>r.employee||r.store||r.sku||r.imei);
-}
-function saveImportedData(fileName){
-  try{
-    localStorage.setItem('smc_dashboard_rows_v1',JSON.stringify(rows));
-    localStorage.setItem('smc_dashboard_meta_v1',JSON.stringify({fileName:fileName||'Portal export',importedAt:new Date().toISOString(),count:rows.length}));
-  }catch(e){}
-}
-function restoreImportedData(){
-  try{
-    const raw=localStorage.getItem('smc_dashboard_rows_v1'), meta=JSON.parse(localStorage.getItem('smc_dashboard_meta_v1')||'null');
-    if(raw){
-      const saved=JSON.parse(raw);
-      if(Array.isArray(saved)&&saved.length){
-        rows=saved;
-        if(meta){
-          const d=meta.importedAt?new Date(meta.importedAt).toLocaleString('en-IN'):'';
-          $('importStatus').innerHTML=`<strong>Auto Import:</strong> Latest portal file restored automatically • <b>${esc(meta.fileName||'Portal export')}</b> • ${Number(meta.count||rows.length).toLocaleString('en-IN')} records • ${esc(d)}`;
-        }
-        return true;
-      }
-    }
-  }catch(e){}
-  return false;
-}
-$('file').onchange=async ev=>{
-  const f=ev.target.files[0]; if(!f)return;
-  try{
-    const b=await f.arrayBuffer();
-    const wb=XLSX.read(b,{type:'array',cellDates:false});
-    const sh=wb.Sheets[wb.SheetNames[0]];
-    const a=XLSX.utils.sheet_to_json(sh,{defval:'',raw:true});
-    rows=normalizeRows(a); saveImportedData(f.name);
-    $('importStatus').innerHTML=`<strong>Auto Import:</strong> Imported successfully • <b>${esc(f.name)}</b> • <b>${rows.length.toLocaleString('en-IN')}</b> records • Saved on this device for automatic restore`;
-    rebuild();
-  }catch(err){ $('importStatus').innerHTML=`<strong style="color:#ff6b7a">Import failed:</strong> ${esc(err.message||String(err))}`; }
-};
-$('download').onclick=()=>{let a=Object.entries(filtered.reduce((o,r)=>{o[r.employee]??={Volume:0,'Total Value':0};o[r.employee].Volume++;o[r.employee]['Total Value']+=Number(r.srp)||0;return o},{})).map(([Employee,d])=>({Employee,Volume:d.Volume,'Total Value':d['Total Value']}));let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(a),'Employee Summary');XLSX.writeFile(wb,'Employee_Sales_Summary.xlsx')}; $('downloadDetail').onclick=()=>{const a=filtered.map(r=>({'Employee Name':r.employee,'Store Name':r.store,'SKU Name':r.sku,'SRP':Number(r.srp)||0,'IMEI':r.imei}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(a),'Filtered Sales');XLSX.writeFile(wb,'SMC_Filtered_Sales.xlsx')};
+$('file').onchange=async ev=>{let f=ev.target.files[0];if(!f)return;let b=await f.arrayBuffer();let wb=XLSX.read(b,{type:'array',cellDates:false});let sh=wb.Sheets[wb.SheetNames[0]];let a=XLSX.utils.sheet_to_json(sh,{defval:'',raw:true});rows=a.map(r=>({
+ employee:String(r['Employee Name']??'').trim(),
+ store:String(r['Store name']??r['Store Name']??'').trim(),
+ sku:String(r['Sku Name']??r['SKU Name']??'').trim(),
+ srp:Number(r['srp']??r['SRP'])||0,
+ imei:String(r['Imei']??r['IMEI']??'').trim()
+})).filter(r=>r.employee||r.store||r.sku||r.imei);rebuild()};
+$('download').onclick=()=>{let a=Object.entries(filtered.reduce((o,r)=>{o[r.employee]??={Volume:0,'Total Value':0};o[r.employee].Volume++;o[r.employee]['Total Value']+=Number(r.srp)||0;return o},{})).map(([Employee,d])=>({Employee,Volume:d.Volume,'Total Value':d['Total Value']}));let wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(a),'Employee Summary');XLSX.writeFile(wb,'Employee_Sales_Summary.xlsx')};
 function setDeviceMode(){
   const w=window.innerWidth;
   const mode=w<=420?'Mobile':w<=768?'Mobile / Tablet':w<=1199?'Tablet / Laptop':'Desktop';
@@ -206,23 +157,24 @@ window.addEventListener('resize',setDeviceMode);
 setDeviceMode();
 
 const DUCK_MODELS = [
-  {label:'Redmi 15A', keys:['redmi 15a']},
-  {label:'Redmi 15C', keys:['redmi 15c']},
-  {label:'Redmi 15', keys:['redmi 15']},
-  {label:'Redmi 17', keys:['redmi 17']},
-  {label:'Redmi Note 15 Pro+', keys:['redmi note 15 pro+','redmi note 15 pro plus']},
-  {label:'Redmi Note 15 Pro', keys:['redmi note 15 pro']},
-  {label:'Redmi Note 15', keys:['redmi note 15']},
-  {label:'Redmi Note 17 Pro Max', keys:['redmi note 17 pro max','redmi note 17 promax']},
-  {label:'Redmi Note 17 Pro', keys:['redmi note 17 pro']},
-  {label:'Redmi Note 17', keys:['redmi note 17']}
+  {label:'Redmi 15A', rx:/^redmi\s+15a(?:\s|$)/i},
+  {label:'Redmi 15C', rx:/^redmi\s+15c(?:\s|$)/i},
+  {label:'Redmi 15', rx:/^redmi\s+15(?:\s|$)/i},
+  {label:'Redmi 17', rx:/^redmi\s+17(?:\s|$)/i},
+  {label:'Redmi Note 15 Pro+', rx:/^redmi\s+note\s+15\s+pro\s*(?:\+|plus)(?:\s|$)/i},
+  {label:'Redmi Note 15 Pro', rx:/^redmi\s+note\s+15\s+pro(?:\s|$)/i},
+  {label:'Redmi Note 15', rx:/^redmi\s+note\s+15(?!\s+pro(?:\s|\+|$))(?:\s|$)/i},
+  {label:'Redmi Note 17 Pro Max', rx:/^redmi\s+note\s+17\s+pro\s+max(?:\s|$)/i},
+  {label:'Redmi Note 17 Pro', rx:/^redmi\s+note\s+17\s+pro(?!\s+max(?:\s|$))(?:\s|$)/i},
+  {label:'Redmi Note 17', rx:/^redmi\s+note\s+17(?!\s+pro(?:\s|$))(?:\s|$)/i}
 ];
 function modelKey(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim()}
-function duckMatch(s,m){const x=modelKey(s);return m.keys.some(k=>x.includes(k));}
+function duckMatch(s,m){return m.rx.test(modelKey(s));}
+
 function renderDuck(){
  const emps=[...new Set(filtered.map(r=>r.employee).filter(Boolean))].sort(), counts={};
  emps.forEach(e=>{counts[e]={};DUCK_MODELS.forEach(m=>counts[e][m.label]=0)});
- filtered.forEach(r=>{if(r.employee)DUCK_MODELS.forEach(m=>{if(duckMatch(r.sku,m))counts[r.employee][m.label]++;})});
+ const seenDuck=new Set(); filtered.forEach(r=>{if(!r.employee)return; const key=String(r.imei||'').trim(); DUCK_MODELS.forEach(m=>{if(duckMatch(r.sku,m)){const dedupeKey=key?`${r.employee}\u001f${m.label}\u001f${key}`:null;if(!dedupeKey||!seenDuck.has(dedupeKey)){counts[r.employee][m.label]++;if(dedupeKey)seenDuck.add(dedupeKey);}}});});
  $('duckHead').innerHTML='<tr><th>Employee Name</th>'+DUCK_MODELS.map(m=>`<th>${esc(m.label)}</th>`).join('')+'<th>Total Duck</th></tr>';
  const totals={};DUCK_MODELS.forEach(m=>totals[m.label]=0);let body='';
  emps.forEach(e=>{let total=0;const cells=DUCK_MODELS.map(m=>{const n=counts[e][m.label]||0;total+=n;totals[m.label]+=n;return `<td class="${n===0?'duck-zero':'duck-hit'}">${n}</td>`}).join('');body+=`<tr><td>${esc(e)}</td>${cells}<td class="duck-total">${total}</td></tr>`});
@@ -231,6 +183,5 @@ function renderDuck(){
  $('duckBody').innerHTML=body||'<tr><td colspan="12">No data</td></tr>';
 }
 
-if(!restoreImportedData()){ $('importStatus').innerHTML='<strong>Auto Import:</strong> Ready. Import the daily SMC portal export once; the latest dataset will be remembered on this device.'; }
 rebuild();
 </script></body></html>
